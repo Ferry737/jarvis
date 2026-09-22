@@ -1,10 +1,10 @@
 /**
  * JARVIS edge worker (Cloudflare). Static app files are served by the assets
  * binding; this worker only handles:
- *   /hermes/*  → proxy to the Hermes API server. Address comes from KV key
- *                "hermes_url" (kept current by scripts/hermes-tunnel.ps1), else
- *                the HERMES_URL secret. The browser sends its own Bearer
- *                key; Hermes checks it.
+ *   /hermes/*  → proxy to the Hermes API server. Address is the HERMES_URL
+ *                secret (the 24/7 VPS), else KV key "hermes_url" (kept current
+ *                by scripts/hermes-tunnel.ps1 on the PC). The browser sends its
+ *                own Bearer key; Hermes checks it.
  *   /market    → free quotes (Yahoo Finance chart API), read-only
  *   /wallet    → ETH balance of a PUBLIC address via a public RPC, read-only
  *   /health    → is the worker up and is HERMES_URL configured

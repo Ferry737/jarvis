@@ -28,7 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lang: "en-US",
   watchlist: ["BTC-USD", "ETH-USD", "EURUSD=X", "SPY"],
   walletAddress: "",
-  design: "a",
+  design: "c",
 }
 
 const KEY = "jarvis.settings.v1"

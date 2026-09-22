@@ -3,26 +3,69 @@
 /* Required for Tailwind to find class references in Apps SDK UI components. */
 @source "../node_modules/@openai/apps-sdk-ui";
 
+/* ── JARVIS tokens: mirror the "Apps in ChatGPT" template (light) + ChatGPT dark ── */
+:root,
+[data-theme="light"] {
+  --j-bg: #ffffff;
+  --j-bubble: #f4f4f4;
+  --j-card: #ffffff;
+  --j-card-2: #f9f9f9;
+  --j-border: rgba(0, 0, 0, 0.09);
+  --j-divider: rgba(0, 0, 0, 0.06);
+  --j-text: #0d0d0d;
+  --j-text-2: #5d5d5d;
+  --j-text-3: #8f8f8f;
+  --j-pill: #f4f4f4;
+  --j-solid: #0d0d0d;
+  --j-on-solid: #ffffff;
+  --j-accent: #0285ff;
+  --j-up: #0a9f4f;
+  --j-down: #e5484d;
+  --j-scrim: rgba(0, 0, 0, 0.32);
+  --j-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] {
+  --j-bg: #212121;
+  --j-bubble: #303030;
+  --j-card: #2a2a2a;
+  --j-card-2: #262626;
+  --j-border: rgba(255, 255, 255, 0.1);
+  --j-divider: rgba(255, 255, 255, 0.07);
+  --j-text: #ececec;
+  --j-text-2: #b4b4b4;
+  --j-text-3: #8a8a8a;
+  --j-pill: #303030;
+  --j-solid: #ffffff;
+  --j-on-solid: #0d0d0d;
+  --j-accent: #3b9dff;
+  --j-up: #3dd68c;
+  --j-down: #ff6369;
+  --j-scrim: rgba(0, 0, 0, 0.55);
+  --j-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
 html,
 body,
 #root {
   height: 100%;
 }
-
 body {
   margin: 0;
-  background: var(--color-surface, #0d0d0d);
+  background: var(--j-bg);
+  color: var(--j-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
 .safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+  padding-bottom: max(env(safe-area-inset-bottom), 10px);
 }
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -30,58 +73,246 @@ body {
   scrollbar-width: none;
 }
 
-/* Voice-mode orb */
-.orb {
-  width: 180px;
-  height: 180px;
-  border-radius: 9999px;
-  background: radial-gradient(circle at 35% 30%, #e0f2ff 0%, #7cc4ff 30%, #2f6bff 65%, #1b1f5e 100%);
-  box-shadow: 0 0 60px rgba(80, 150, 255, 0.45);
-  transition: transform 300ms ease, filter 300ms ease, opacity 300ms ease;
+/* Press feedback: everything tappable squishes a little, like iOS. */
+.tap {
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 160ms ease, background-color 200ms ease;
 }
-.orb[data-phase="listening"] {
-  animation: breathe 2.4s ease-in-out infinite;
-}
-.orb[data-phase="thinking"] {
-  animation: spin 1.6s linear infinite;
-  filter: saturate(0.7) brightness(0.9);
-}
-.orb[data-phase="speaking"] {
-  animation: pulse 0.7s ease-in-out infinite alternate;
-}
-.orb[data-muted="true"] {
-  filter: grayscale(1) brightness(0.6);
-  animation: none;
+.tap:active {
+  transform: scale(0.96);
+  opacity: 0.85;
 }
 
+/* ── Entrance animations ── */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes slide-right {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @keyframes breathe {
   0%,
   100% {
-    transform: scale(0.94);
+    transform: scale(0.95);
   }
   50% {
     transform: scale(1.04);
   }
 }
-@keyframes pulse {
+@keyframes ring {
   from {
-    transform: scale(1);
+    transform: scale(0.9);
+    opacity: 0.55;
   }
   to {
-    transform: scale(1.12);
+    transform: scale(1.9);
+    opacity: 0;
   }
 }
-@keyframes spin {
+@keyframes flash-up {
   from {
-    transform: rotate(0deg) scale(0.9);
+    background: color-mix(in srgb, var(--j-up) 22%, transparent);
+  }
+}
+@keyframes flash-down {
+  from {
+    background: color-mix(in srgb, var(--j-down) 22%, transparent);
+  }
+}
+@keyframes letter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(4px);
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(12px, -8px) scale(1.08);
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
   }
   to {
-    transform: rotate(360deg) scale(0.9);
+    background-position: -200% 0;
   }
 }
 
+.anim-rise {
+  animation: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-pop {
+  animation: pop 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-fade {
+  animation: fade 300ms ease both;
+}
+.anim-sheet {
+  animation: slide-up 380ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+.anim-drawer {
+  animation: slide-right 320ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+.flash-up {
+  animation: flash-up 1.2s ease-out;
+}
+.flash-down {
+  animation: flash-down 1.2s ease-out;
+}
+.greet-letter {
+  display: inline-block;
+  white-space: pre;
+  animation: letter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Streaming caret at the end of a reply that's still arriving. */
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-left: 0.2em;
+  border-radius: 9999px;
+  background: var(--j-text);
+  vertical-align: 0.05em;
+  animation: breathe 900ms ease-in-out infinite;
+}
+
+/* Composer pill "Thinking" shimmer (template fullscreen composer). */
+.shimmer-text {
+  background: linear-gradient(90deg, var(--j-text-3) 0%, var(--j-text) 45%, var(--j-text-3) 90%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.2s linear infinite;
+}
+
+/* ── JARVIS orb: layered, slowly morphing gradient ── */
+.orb {
+  position: relative;
+  border-radius: 9999px;
+  isolation: isolate;
+}
+.orb::before,
+.orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.orb::before {
+  background: conic-gradient(from 0deg, #7cc4ff, #2f6bff, #8b5cf6, #22d3ee, #7cc4ff);
+  filter: blur(10px) saturate(1.2);
+  animation: spin 6s linear infinite;
+  opacity: 0.9;
+}
+.orb::after {
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, #bfe3ff 18%, #5aa9ff 45%, #2f6bff 72%, #1b1f5e 100%);
+  box-shadow: inset 0 -8px 24px rgba(10, 20, 80, 0.35);
+}
+/* Small marks: keep the glow tight so it reads as an icon, not a smudge. */
+.orb-sm::before {
+  filter: blur(1.5px);
+  inset: -1px;
+}
+.orb[data-phase="listening"] {
+  animation: breathe 2.6s ease-in-out infinite;
+}
+.orb[data-phase="thinking"]::before {
+  animation-duration: 1.4s;
+}
+.orb[data-phase="thinking"] {
+  animation: breathe 1.2s ease-in-out infinite;
+}
+.orb[data-phase="speaking"] {
+  transition: transform 120ms ease-out;
+}
+.orb[data-muted="true"] {
+  filter: grayscale(1) brightness(0.8);
+  animation: none;
+}
+.orb[data-muted="true"]::before {
+  animation: none;
+}
+.orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid #5aa9ff;
+  animation: ring 2.4s cubic-bezier(0.2, 0.6, 0.2, 1) infinite;
+}
+.orb-ring:nth-child(2) {
+  animation-delay: 0.8s;
+}
+.orb-ring:nth-child(3) {
+  animation-delay: 1.6s;
+}
+
+/* Small JARVIS mark used as the "app icon" label above answers. */
+.mark {
+  width: 18px;
+  height: 18px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .orb {
-    animation: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
   }
 }

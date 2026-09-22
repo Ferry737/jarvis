@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
-import { Button } from "@openai/apps-sdk-ui/components/Button"
-import { X } from "@openai/apps-sdk-ui/components/Icon"
 import { health } from "../api/hermes"
+import { Sheet } from "../ui/Sheet"
 import { listVoices } from "../voice/engine"
-import { isWalletAddress, type Settings } from "./store"
+import { DESIGNS, isWalletAddress, type Design, type Settings } from "./store"
 
 export function SettingsSheet(props: { settings: Settings; update: (p: Partial<Settings>) => void; onClose: () => void }) {
   const { settings, update } = props
@@ -19,68 +18,88 @@ export function SettingsSheet(props: { settings: Settings; update: (p: Partial<S
   }, [])
 
   const runTest = async () => {
-    if (!settings.apiKey) {
-      setTest("Paste your API key first.")
-      return
-    }
+    if (!settings.apiKey) return setTest("Paste your API key first.")
     setTest("testing")
     try {
       const w = await fetch("/health").then((r) => r.json()).catch(() => null)
       if (settings.hermesBase === "/hermes" && w && !w.hermesConfigured) {
-        setTest("The Cloudflare worker has no HERMES_URL yet. See README → Connect Hermes.")
-        return
+        return setTest("Hermes isn't connected to Cloudflare yet. Start the tunnel on the PC.")
       }
-      const ok = await health({ base: settings.hermesBase, key: settings.apiKey })
-      setTest(ok ? "ok" : "Hermes answered, but not OK. Check the API key.")
+      await health({ base: settings.hermesBase, key: settings.apiKey })
+      setTest("ok")
     } catch (e) {
       setTest(e instanceof Error ? e.message : String(e))
     }
   }
 
-  const field = "w-full rounded-xl border border-default bg-surface px-3 py-2.5 text-[16px] text-default outline-none"
+  const field = "w-full rounded-2xl border px-3.5 py-3 text-[16px] outline-none transition-shadow focus:shadow-[0_0_0_2px_var(--j-accent)]"
+  const fieldStyle = { background: "var(--j-card)", borderColor: "var(--j-border)", color: "var(--j-text)" }
+  const labelCls = "flex flex-col gap-1.5 text-[14px]"
+  const hint = { color: "var(--j-text-3)" }
+  const section = (title: string, delay: number, children: React.ReactNode) => (
+    <section className="anim-rise mt-6 flex flex-col gap-3 first:mt-1" style={{ animationDelay: `${delay}ms` }}>
+      <h3 className="text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--j-text-3)" }}>
+        {title}
+      </h3>
+      {children}
+    </section>
+  )
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-surface" role="dialog" aria-label="Settings">
-      <div className="safe-top flex items-center justify-between border-b border-subtle px-4 py-3">
-        <h2 className="text-lg font-semibold text-default">Settings</h2>
-        <button type="button" aria-label="Close" onClick={props.onClose} className="grid size-9 place-items-center rounded-full text-secondary">
-          <X className="size-5" />
-        </button>
-      </div>
-
-      <div className="safe-bottom flex-1 overflow-y-auto px-4 py-4">
-        <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-secondary">Hermes</h3>
-          <label className="flex flex-col gap-1.5 text-sm text-secondary">
-            API key (API_SERVER_KEY) · stored only on this phone
-            <input
-              className={field}
-              type="password"
-              autoComplete="off"
-              value={settings.apiKey}
-              onChange={(e) => update({ apiKey: e.target.value.trim() })}
-              placeholder="paste your key"
-            />
+    <Sheet title="Settings" onClose={props.onClose} tall>
+      {section(
+        "Hermes",
+        0,
+        <>
+          <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
+            API key · stored only on this phone
+            <input className={field} style={fieldStyle} type="password" autoComplete="off" value={settings.apiKey} onChange={(e) => update({ apiKey: e.target.value.trim() })} placeholder="Paste your key" />
           </label>
-          <label className="flex flex-col gap-1.5 text-sm text-secondary">
+          <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
             Hermes address
-            <input className={field} value={settings.hermesBase} onChange={(e) => update({ hermesBase: e.target.value.trim() || "/hermes" })} />
-            <span className="text-xs text-tertiary">Leave as /hermes to go through Cloudflare.</span>
+            <input className={field} style={fieldStyle} value={settings.hermesBase} onChange={(e) => update({ hermesBase: e.target.value.trim() || "/hermes" })} />
+            <span className="text-[12px]" style={hint}>Leave as /hermes to go through Cloudflare.</span>
           </label>
-          <div className="flex items-center gap-3">
-            <Button color="primary" variant="soft" onClick={runTest} loading={test === "testing"}>
-              Test connection
-            </Button>
-            {test === "ok" && <span className="text-sm text-emerald-400">Connected to Hermes ✓</span>}
-            {test !== "ok" && test !== "idle" && test !== "testing" && <span className="text-sm text-red-400">{test}</span>}
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={runTest} className="tap rounded-full px-4 py-2.5 text-[15px] font-medium" style={{ background: "var(--j-solid)", color: "var(--j-on-solid)" }}>
+              {test === "testing" ? <span className="shimmer-text">Testing</span> : "Test connection"}
+            </button>
+            {test === "ok" && <span className="anim-pop text-[14px]" style={{ color: "var(--j-up)" }}>Connected to Hermes ✓</span>}
+            {!["ok", "idle", "testing"].includes(test) && <span className="anim-pop text-[14px]" style={{ color: "var(--j-down)" }}>{test}</span>}
           </div>
-        </section>
+        </>,
+      )}
 
-        <section className="mt-8 flex flex-col gap-3">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-secondary">Voice</h3>
-          <label className="flex flex-col gap-1.5 text-sm text-secondary">
+      {section(
+        "Design",
+        60,
+        <div className="grid grid-cols-3 gap-2">
+          {(Object.keys(DESIGNS) as Design[]).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => update({ design: d })}
+              aria-pressed={settings.design === d}
+              className="tap flex flex-col items-start gap-0.5 rounded-2xl border p-3 text-left text-[13px]"
+              style={{
+                background: settings.design === d ? "var(--j-bubble)" : "var(--j-card)",
+                borderColor: settings.design === d ? "var(--j-text)" : "var(--j-border)",
+              }}
+            >
+              <span className="text-[15px] font-semibold">{d.toUpperCase()}</span>
+              <span style={{ color: "var(--j-text-2)" }}>{DESIGNS[d]}</span>
+            </button>
+          ))}
+        </div>,
+      )}
+
+      {section(
+        "Voice",
+        120,
+        <>
+          <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
             JARVIS voice
-            <select className={field} value={settings.voiceName} onChange={(e) => update({ voiceName: e.target.value })}>
+            <select className={field} style={fieldStyle} value={settings.voiceName} onChange={(e) => update({ voiceName: e.target.value })}>
               <option value="">Automatic (British male if available)</option>
               {voices.map((v) => (
                 <option key={v.name + v.lang} value={v.name}>
@@ -88,60 +107,48 @@ export function SettingsSheet(props: { settings: Settings; update: (p: Partial<S
                 </option>
               ))}
             </select>
-            <span className="text-xs text-tertiary">
+            <span className="text-[12px]" style={hint}>
               Better voices: iPhone Settings › Accessibility › Spoken Content › Voices › English › download an "Enhanced" voice.
             </span>
           </label>
-          <label className="flex flex-col gap-1.5 text-sm text-secondary">
+          <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
             I speak
-            <select className={field} value={settings.lang} onChange={(e) => update({ lang: e.target.value })}>
+            <select className={field} style={fieldStyle} value={settings.lang} onChange={(e) => update({ lang: e.target.value })}>
               {["en-US", "en-GB", "en-AU", "en-IN"].map((l) => (
                 <option key={l}>{l}</option>
               ))}
             </select>
           </label>
-        </section>
+        </>,
+      )}
 
-        <section className="mt-8 flex flex-col gap-3">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-secondary">Cards</h3>
-          <label className="flex flex-col gap-1.5 text-sm text-secondary">
+      {section(
+        "Cards",
+        180,
+        <>
+          <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
             Watchlist (Yahoo symbols, comma separated)
             <input
               className={field}
+              style={fieldStyle}
               value={watch}
               onChange={(e) => setWatch(e.target.value)}
-              onBlur={() =>
-                update({
-                  watchlist: watch
-                    .split(",")
-                    .map((s) => s.trim().toUpperCase())
-                    .filter(Boolean)
-                    .slice(0, 12),
-                })
-              }
+              onBlur={() => update({ watchlist: watch.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean).slice(0, 12) })}
             />
           </label>
-          <label className="flex flex-col gap-1.5 text-sm text-secondary">
-            MetaMask public address (0x…) · view only, never your seed phrase
-            <input
-              className={field}
-              value={settings.walletAddress}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => update({ walletAddress: e.target.value.trim() })}
-              placeholder="0x…"
-            />
+          <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
+            MetaMask public address · view only, never your seed phrase
+            <input className={field} style={fieldStyle} value={settings.walletAddress} autoComplete="off" spellCheck={false} onChange={(e) => update({ walletAddress: e.target.value.trim() })} placeholder="0x…" />
             {settings.walletAddress && !isWalletAddress(settings.walletAddress) && (
-              <span className="text-xs text-red-400">That doesn't look like a 0x address.</span>
+              <span className="text-[12px]" style={{ color: "var(--j-down)" }}>That doesn't look like a 0x address.</span>
             )}
           </label>
-        </section>
+        </>,
+      )}
 
-        <section className="mt-8 text-xs leading-5 text-tertiary">
-          JARVIS is a personal app for my Hermes Agent. UI built with Apps SDK UI (MIT) and based on the "Apps in ChatGPT" Figma kit by
-          OpenAI, licensed CC BY 4.0. Not affiliated with or endorsed by OpenAI.
-        </section>
-      </div>
-    </div>
+      <p className="mt-8 text-[12px] leading-5" style={hint}>
+        JARVIS is a personal app for my Hermes Agent. UI built with Apps SDK UI (MIT), based on OpenAI's "Apps in ChatGPT" Figma kit (CC BY 4.0). Not affiliated with OpenAI.
+      </p>
+    </Sheet>
   )
 }

@@ -83,16 +83,21 @@ async function proxyHermes(req: Request, url: URL, env: Env): Promise<Response> 
   return new Response(upstream.body, { status: upstream.status, headers: out })
 }
 
-type Quote = { symbol: string; price: number | null; changePct: number | null; currency: string | null }
+type Quote = { symbol: string; price: number | null; changePct: number | null; currency: string | null; spark: number[] }
 
 async function quote(symbol: string): Promise<Quote> {
   const res = await fetch(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`,
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=30m`,
     { headers: { "user-agent": "Mozilla/5.0 (JARVIS personal dashboard)" }, cf: { cacheTtl: 60, cacheEverything: true } },
   )
-  if (!res.ok) return { symbol, price: null, changePct: null, currency: null }
+  if (!res.ok) return { symbol, price: null, changePct: null, currency: null, spark: [] }
   const body: any = await res.json()
   const meta = body?.chart?.result?.[0]?.meta
+  const closes: number[] = (body?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? []).filter(
+    (n: unknown): n is number => typeof n === "number",
+  )
+  const step = Math.max(1, Math.ceil(closes.length / 40))
+  const spark = closes.filter((_, i) => i % step === 0).map((n) => +n.toPrecision(6))
   const price: number | undefined = meta?.regularMarketPrice
   const prev: number | undefined = meta?.chartPreviousClose ?? meta?.previousClose
   return {
@@ -100,6 +105,7 @@ async function quote(symbol: string): Promise<Quote> {
     price: price ?? null,
     changePct: price != null && prev ? ((price - prev) / prev) * 100 : null,
     currency: meta?.currency ?? null,
+    spark,
   }
 }
 

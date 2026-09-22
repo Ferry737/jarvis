@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { createListener, Speaker, sttSupported, type Listener } from "./engine"
 import { initialVoice, micOpen, voiceReducer } from "./machine"
 import { SentenceChunker } from "./speech"
@@ -11,6 +11,7 @@ export type SendFn = (
 /** Orchestrates listen → Hermes → speak, like ChatGPT's voice mode. */
 export function useVoice(send: SendFn, settings: { lang: string; voiceName?: string }) {
   const [state, dispatch] = useReducer(voiceReducer, initialVoice)
+  const [beat, setBeat] = useState(0)
   const listener = useRef<Listener | null>(null)
   const listening = useRef(false)
   const speaker = useRef(new Speaker())
@@ -21,6 +22,7 @@ export function useVoice(send: SendFn, settings: { lang: string; voiceName?: str
   stateRef.current = state
 
   speaker.current.voiceName = settings.voiceName
+  speaker.current.onWord = () => setBeat((b) => b + 1)
   speaker.current.onIdle = () => {
     if (replyDone.current) dispatch({ type: "REPLY_FINISHED" })
   }
@@ -146,5 +148,5 @@ export function useVoice(send: SendFn, settings: { lang: string; voiceName?: str
 
   const toggleMute = useCallback(() => dispatch({ type: "TOGGLE_MUTE" }), [])
 
-  return { state, open, close, tapOrb, toggleMute, supported: sttSupported() }
+  return { state, beat, open, close, tapOrb, toggleMute, supported: sttSupported() }
 }

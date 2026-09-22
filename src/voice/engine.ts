@@ -137,6 +137,8 @@ export class Speaker {
   voiceName: string | undefined
   rate = 1.05
   onIdle: () => void = () => {}
+  /** Fires on each spoken word, so the orb can pulse in time with the voice. */
+  onWord: () => void = () => {}
 
   get busy() {
     return this.pending > 0
@@ -168,6 +170,9 @@ export class Speaker {
     }
     u.onend = done
     u.onerror = done
+    u.onboundary = (e) => {
+      if (gen === this.generation && (e.name === "word" || !e.name)) this.onWord()
+    }
     speechSynthesis.speak(u)
   }
 

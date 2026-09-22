@@ -10,6 +10,15 @@ export type Settings = {
   watchlist: string[]
   /** Public wallet address for the read-only Wallet card. Never a private key. */
   walletAddress: string
+  /** Design direction: a = template light, b = template dark, c = light + pinned live voice bar. */
+  design: Design
+}
+
+export type Design = "a" | "b" | "c"
+export const DESIGNS: Record<Design, string> = {
+  a: "Template · light",
+  b: "Template · dark",
+  c: "Template · live voice bar",
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -19,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lang: "en-US",
   watchlist: ["BTC-USD", "ETH-USD", "EURUSD=X", "SPY"],
   walletAddress: "",
+  design: "a",
 }
 
 const KEY = "jarvis.settings.v1"
@@ -41,7 +51,12 @@ export function saveJSON(key: string, value: unknown) {
 }
 
 export function useSettings() {
-  const [settings, setState] = useState<Settings>(() => loadJSON(KEY, DEFAULT_SETTINGS))
+  const [settings, setState] = useState<Settings>(() => {
+    const s = loadJSON(KEY, DEFAULT_SETTINGS)
+    // ?v=a|b|c previews a design direction without changing the saved choice.
+    const v = new URLSearchParams(location.search).get("v")
+    return v === "a" || v === "b" || v === "c" ? { ...s, design: v } : s
+  })
   const update = useCallback((patch: Partial<Settings>) => {
     setState((prev) => {
       const next = { ...prev, ...patch }

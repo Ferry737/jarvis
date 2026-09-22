@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client"
 import { applyDocumentTheme } from "@openai/apps-sdk-ui/theme"
 import { App } from "./App"
 
-applyDocumentTheme("dark")
+applyDocumentTheme("light")
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -32,6 +32,30 @@ If a link or code is needed, say you've put it on screen.`
 
 export type HermesConfig = { base: string; key: string }
 
+const CONNECT_TIMEOUT_MS = 20_000
+/** Hermes sends ": keepalive" every 10 s, so a minute of silence means the connection is dead. */
+const STREAM_IDLE_MS = 60_000
+const OFFLINE = "Can't reach Hermes. Check that the VPS (or the PC tunnel) is running, then try again."
+
+/** fetch that gives up if no response arrives in time, and still honours the caller's abort. */
+async function fetchWithTimeout(url: string, init: RequestInit, outer?: AbortSignal): Promise<Response> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(new HermesError(OFFLINE, 504)), CONNECT_TIMEOUT_MS)
+  const onOuter = () => ctrl.abort(outer?.reason ?? new DOMException("Aborted", "AbortError"))
+  outer?.addEventListener("abort", onOuter, { once: true })
+  if (outer?.aborted) onOuter()
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal })
+  } catch (e) {
+    if (ctrl.signal.reason instanceof HermesError) throw ctrl.signal.reason
+    if ((e as Error)?.name === "AbortError") throw e
+    throw new HermesError(OFFLINE, 503) // DNS / connection refused / TLS failure
+  } finally {
+    clearTimeout(timer)
+    outer?.removeEventListener("abort", onOuter)
+  }
+}
+
 function headers(cfg: HermesConfig): HeadersInit {
   return { Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" }
 }
@@ -51,13 +75,13 @@ async function errorFrom(res: Response): Promise<HermesError> {
 
 /** Checks reachability AND the key (/v1/health is public, /v1/models is key-gated). */
 export async function health(cfg: HermesConfig): Promise<boolean> {
-  const res = await fetch(`${cfg.base}/v1/models`, { headers: headers(cfg) })
+  const res = await fetchWithTimeout(`${cfg.base}/v1/models`, { headers: headers(cfg) })
   if (!res.ok) throw await errorFrom(res)
   return true
 }
 
 export async function createSession(cfg: HermesConfig): Promise<string> {
-  const res = await fetch(`${cfg.base}/api/sessions`, {
+  const res = await fetchWithTimeout(`${cfg.base}/api/sessions`, {
     method: "POST",
     headers: headers(cfg),
     body: JSON.stringify({ title: "JARVIS", system_prompt: SYSTEM_PROMPT, source: "jarvis" }),
@@ -79,12 +103,11 @@ export async function streamChat(
 ): Promise<string> {
   const body: Record<string, unknown> = { message }
   if (opts.voice) body.system_message = VOICE_INSTRUCTIONS
-  const res = await fetch(`${cfg.base}/api/sessions/${encodeURIComponent(sessionId)}/chat/stream`, {
-    method: "POST",
-    headers: headers(cfg),
-    body: JSON.stringify(body),
-    signal: opts.signal,
-  })
+  const res = await fetchWithTimeout(
+    `${cfg.base}/api/sessions/${encodeURIComponent(sessionId)}/chat/stream`,
+    { method: "POST", headers: headers(cfg), body: JSON.stringify(body) },
+    opts.signal,
+  )
   if (!res.ok || !res.body) throw await errorFrom(res)
 
   const parser = new SseParser()
@@ -121,9 +144,23 @@ export async function streamChat(
     }
   }
 
+  let idle: ReturnType<typeof setTimeout> | undefined
+  let stalled = false
+  const arm = () => {
+    clearTimeout(idle)
+    idle = setTimeout(() => {
+      stalled = true
+      reader.cancel().catch(() => {})
+    }, STREAM_IDLE_MS)
+  }
+  const onAbort = () => reader.cancel().catch(() => {})
+  opts.signal?.addEventListener("abort", onAbort, { once: true })
   try {
     for (;;) {
+      arm()
       const { value, done } = await reader.read()
+      if (opts.signal?.aborted) throw new DOMException("Aborted", "AbortError")
+      if (stalled) throw new HermesError("Hermes stopped responding. Try again.", 504)
       if (done) break
       for (const ev of parser.push(value)) handle(ev.event, ev.data)
     }
@@ -132,6 +169,9 @@ export async function streamChat(
     const msg = e instanceof Error ? e.message : String(e)
     if ((e as Error)?.name !== "AbortError") handlers.onError?.(msg)
     throw e
+  } finally {
+    clearTimeout(idle)
+    opts.signal?.removeEventListener("abort", onAbort)
   }
   // Non-streaming models deliver the whole answer in assistant.completed.
   const result = final ?? text

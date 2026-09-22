@@ -87,7 +87,8 @@ export function Composer(props: {
             aria-label="Message JARVIS"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !("ontouchstart" in window)) {
+              // The iPhone keyboard shows a "send" key (enterKeyHint), so Enter must send there too.
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
                 submit()
               }

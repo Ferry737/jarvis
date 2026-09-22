@@ -6,3 +6,4 @@ dist
 .hermes-key
 .hermes-vps-key
 vps/env-additions.txt
+.gh-login.log

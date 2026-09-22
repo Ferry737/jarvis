@@ -60,7 +60,9 @@ export function useSettings() {
   const update = useCallback((patch: Partial<Settings>) => {
     setState((prev) => {
       const next = { ...prev, ...patch }
-      saveJSON(KEY, next)
+      // A ?v= preview must not overwrite the saved design unless the user picks one.
+      const saved = loadJSON(KEY, DEFAULT_SETTINGS)
+      saveJSON(KEY, "design" in patch ? next : { ...next, design: saved.design })
       return next
     })
   }, [])

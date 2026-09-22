@@ -8,6 +8,33 @@ import { App } from "./App"
 
 applyDocumentTheme("light")
 
+// When a new version's service worker takes over, reload into it the next time the
+// app is in the background (never mid-conversation), so the phone never stays on an old build.
+if ("serviceWorker" in navigator) {
+  const hadController = !!navigator.serviceWorker.controller
+  let pending = false
+  const reloadIfHidden = () => pending && document.visibilityState === "hidden" && location.reload()
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController) return // first install, nothing stale on screen
+    pending = true
+    reloadIfHidden()
+  })
+  document.addEventListener("visibilitychange", reloadIfHidden)
+}
+
+// iOS doesn't shrink the layout when the keyboard opens; it slides the whole page up and the
+// header disappears. Size the app to the *visible* viewport instead and pin the page to the top.
+const vv = window.visualViewport
+if (vv) {
+  const fit = () => {
+    document.documentElement.style.setProperty("--app-height", `${vv.height}px`)
+    if (window.scrollY !== 0) window.scrollTo(0, 0)
+  }
+  vv.addEventListener("resize", fit)
+  vv.addEventListener("scroll", fit)
+  fit()
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />

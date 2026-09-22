@@ -45,9 +45,11 @@
 }
 
 html,
-body,
-#root {
+body {
   height: 100%;
+}
+#root {
+  height: var(--app-height, 100%);
 }
 body {
   margin: 0;

@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jarvis",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/hermes/*", "/market", "/wallet", "/health"]
+  },
+  "observability": { "enabled": true },
+  // Holds "hermes_url", written by scripts/hermes-tunnel.ps1 on every tunnel start.
+  // A fixed address (e.g. a VPS) can instead be set with: npx wrangler secret put HERMES_URL
+  "kv_namespaces": [{ "binding": "CONFIG", "id": "4988ff94126d491dadcb3c5cc7f885f4" }]
+}

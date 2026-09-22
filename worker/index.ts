@@ -18,9 +18,10 @@ export interface Env {
   CONFIG?: KVNamespace
 }
 
+/** A fixed address (the 24/7 VPS) wins; the PC tunnel's changing address is the fallback. */
 async function hermesUrl(env: Env): Promise<string | null> {
-  const fromKv = env.CONFIG ? await env.CONFIG.get("hermes_url", { cacheTtl: 30 }) : null
-  return (fromKv || env.HERMES_URL || "").replace(/\/+$/, "") || null
+  const fromKv = env.HERMES_URL ? null : env.CONFIG ? await env.CONFIG.get("hermes_url", { cacheTtl: 30 }) : null
+  return (env.HERMES_URL || fromKv || "").replace(/\/+$/, "") || null
 }
 
 const json = (body: unknown, status = 200, extra: HeadersInit = {}) =>

@@ -1,0 +1,28 @@
+# Hostinger Hermes Agent + JARVIS API route.
+# Same as the original, plus a second Traefik route that publishes Hermes's
+# API server (port 8642 inside the container) at https://jarvis-api.<your server>.
+# Paste this over the project's docker-compose in Hostinger's Docker Manager.
+services:
+  hermes-agent:
+    image: ghcr.io/hostinger/hvps-hermes-agent:latest
+    restart: unless-stopped
+    ports:
+      - "4860"
+    labels:
+      - traefik.enable=true
+      # Admin dashboard (unchanged; now names its service explicitly because there are two)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls.certresolver=letsencrypt
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.service=${COMPOSE_PROJECT_NAME}
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=4860
+      # JARVIS: Hermes API server (key-protected by API_SERVER_KEY in .env)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.rule=Host(`jarvis-api.${TRAEFIK_HOST}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.service=${COMPOSE_PROJECT_NAME}-api
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}-api.loadbalancer.server.port=8642
+    env_file:
+      - .env
+    volumes:
+      - ./data:/opt/data

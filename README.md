@@ -6,22 +6,37 @@ A voice-first iPhone assistant for my Hermes Agent: a ChatGPT-style chat, a hand
 iPhone Safari ──HTTPS──▶ Cloudflare Worker (jarvis.<you>.workers.dev)
                            ├─ serves the app
                            ├─ /market, /wallet  (free, read-only data)
-                           └─ /hermes/* ──▶ Cloudflare quick tunnel ──▶ Hermes on this PC (127.0.0.1:8642)
+                           └─ /hermes/* ──▶ 1st: Hermes on the VPS  (https://jarvis-api.<server>, 24/7)
+                                          └▶ 2nd: Hermes on this PC (Cloudflare quick tunnel), if the VPS doesn't answer
 ```
 
 Spec: [docs/SPEC.md](docs/SPEC.md).
 
 ## Everyday use
 
-1. On the PC, keep Hermes running and start the tunnel:
-   ```
-   powershell -ExecutionPolicy Bypass -File scripts\hermes-tunnel.ps1
-   ```
-2. On the iPhone, open your workers.dev address in Safari, then Share › **Add to Home Screen**.
-3. First launch: Settings › paste the Hermes API key › **Test connection**.
-   The key is in `.hermes-key` in this folder (never commit it, never share it).
+1. On the iPhone, open your workers.dev address in Safari, then Share › **Add to Home Screen**.
+2. First launch: tap **Add key** › paste the Hermes API key › **Test connection**.
+   The key is in `.hermes-key` in this folder (never commit it, never share it). The VPS and the PC use the
+   **same key**, so the phone never needs to know which one answered.
+   Paste it inside the Home Screen app itself: iOS keeps Home Screen apps' storage separate from Safari.
 
-JARVIS is only reachable while the PC is awake and the tunnel window is open. For 24/7, move Hermes to a VPS (below).
+The VPS is the default. If it's down, the worker falls back to the PC within ~5 s and remembers that for a
+minute. To use the PC fallback, keep Hermes running and start the tunnel:
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\hermes-tunnel.ps1
+```
+
+## VPS setup (Hostinger Docker)
+
+1. In hPanel › VPS › Docker Manager › your Hermes project, add the lines from `vps/env-additions.txt`
+   (local only, git-ignored) to the project's `.env`.
+2. Replace the project's compose file with [vps/docker-compose.yml](vps/docker-compose.yml): it adds a second
+   Traefik route that publishes Hermes's API server at `https://jarvis-api.<server>`.
+3. Redeploy. Check: `https://jarvis-api.<server>/v1/health` returns `{"status": ...}` and `/v1/models`
+   returns 401 without the key.
+
+The worker's primary address is the `HERMES_URL` secret (`npx wrangler secret put HERMES_URL`).
 
 ## Voice
 
@@ -49,13 +64,6 @@ npm run build       # typecheck + build to dist/
 npx wrangler dev    # app + worker locally on :8787 (reads .dev.vars → local Hermes)
 npm run deploy      # build + deploy to Cloudflare
 ```
-
-## Move Hermes to a VPS (24/7)
-
-1. Create a VPS (Hetzner CX22 or DigitalOcean, Ubuntu 24.04), install Hermes, set `API_SERVER_ENABLED=true` and a new `API_SERVER_KEY`.
-2. Run `cloudflared tunnel --url http://127.0.0.1:8642` there as a systemd service, or point a fixed address at it with
-   `npx wrangler secret put HERMES_URL`.
-3. Paste the new key in JARVIS Settings.
 
 ## Security notes
 

@@ -1,28 +1,42 @@
 /**
  * JARVIS edge worker (Cloudflare). Static app files are served by the assets
  * binding; this worker only handles:
- *   /hermes/*  → proxy to the Hermes API server. Address is the HERMES_URL
- *                secret (the 24/7 VPS), else KV key "hermes_url" (kept current
- *                by scripts/hermes-tunnel.ps1 on the PC). The browser sends its
- *                own Bearer key; Hermes checks it.
+ *   /hermes/*  → proxy to Hermes. Tries the HERMES_URL secret (the 24/7 VPS)
+ *                first and falls back to KV key "hermes_url" (the PC tunnel,
+ *                kept current by scripts/hermes-tunnel.ps1) when the VPS doesn't
+ *                answer. Both use the same key; the browser sends it, Hermes checks it.
  *   /market    → free quotes (Yahoo Finance chart API), read-only
  *   /wallet    → ETH balance of a PUBLIC address via a public RPC, read-only
- *   /health    → is the worker up and is HERMES_URL configured
+ *   /health    → is the worker up and how many Hermes routes exist
  */
 
 export interface Env {
   ASSETS: Fetcher
-  /** Fixed Hermes address (e.g. a VPS). Optional when the KV entry is used. */
+  /** The 24/7 VPS Hermes address (tried first). */
   HERMES_URL?: string
   /** KV holding "hermes_url", updated by the PC/VPS tunnel script on every start. */
   CONFIG?: KVNamespace
 }
 
-/** A fixed address (the 24/7 VPS) wins; the PC tunnel's changing address is the fallback. */
-async function hermesUrl(env: Env): Promise<string | null> {
-  const fromKv = env.HERMES_URL ? null : env.CONFIG ? await env.CONFIG.get("hermes_url", { cacheTtl: 30 }) : null
-  return (env.HERMES_URL || fromKv || "").replace(/\/+$/, "") || null
+const clean = (u: string | null | undefined) => (u ?? "").trim().replace(/\/+$/, "")
+
+/** Hermes addresses in order of preference: the 24/7 VPS, then the PC tunnel. */
+async function hermesUrls(env: Env): Promise<string[]> {
+  const kv = env.CONFIG ? await env.CONFIG.get("hermes_url", { cacheTtl: 30 }) : null
+  return [...new Set([clean(env.HERMES_URL), clean(kv)].filter(Boolean))]
 }
+
+// "This address just failed" markers live in the datacenter's cache for a minute, so every
+// request (whichever worker instance serves it) skips a dead VPS instead of waiting on it.
+const DOWN_TTL_S = 60
+const downKey = (base: string) => new Request(`https://jarvis.cache/down?u=${encodeURIComponent(base)}`)
+const isDown = async (base: string) => !!(await caches.default.match(downKey(base)))
+const markDown = (base: string) =>
+  caches.default.put(downKey(base), new Response("down", { headers: { "cache-control": `max-age=${DOWN_TTL_S}` } }))
+const markUp = (base: string) => caches.default.delete(downKey(base))
+const PRIMARY_TIMEOUT_MS = 5000
+/** Cloudflare / proxy statuses that mean "the origin isn't there", not "Hermes said no". */
+const ORIGIN_DOWN = new Set([502, 503, 504, 520, 521, 522, 523, 524, 530])
 
 const json = (body: unknown, status = 200, extra: HeadersInit = {}) =>
   new Response(JSON.stringify(body), {
@@ -38,10 +52,13 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url)
     try {
-      if (url.pathname.startsWith("/hermes/")) return await proxyHermes(req, url, env)
+      if (url.pathname.startsWith("/hermes/")) return await proxyHermes(req, url, env, ctx)
       if (url.pathname === "/market") return await market(url, ctx)
       if (url.pathname === "/wallet") return await wallet(url, ctx)
-      if (url.pathname === "/health") return json({ ok: true, hermesConfigured: !!(await hermesUrl(env)) })
+      if (url.pathname === "/health") {
+        const urls = await hermesUrls(env)
+        return json({ ok: true, hermesConfigured: urls.length > 0, routes: urls.length })
+      }
     } catch (e) {
       return json({ error: { message: e instanceof Error ? e.message : String(e) } }, 502)
     }
@@ -49,30 +66,51 @@ export default {
   },
 } satisfies ExportedHandler<Env>
 
-async function proxyHermes(req: Request, url: URL, env: Env): Promise<Response> {
-  const base = await hermesUrl(env)
-  if (!base) {
+async function proxyHermes(req: Request, url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const all = await hermesUrls(env)
+  if (all.length === 0) {
     return json({ error: { message: "Hermes is not connected yet. Start scripts/hermes-tunnel.ps1 on the PC." } }, 503)
   }
-  const target = base + url.pathname.slice("/hermes".length) + url.search
+  // Skip addresses that failed in the last minute, unless that leaves nothing to try.
+  const down = await Promise.all(all.map(isDown))
+  const live = all.filter((_, i) => !down[i])
+  const bases = live.length ? live : all
+
   const headers = new Headers()
   for (const h of ["authorization", "content-type", "accept", "last-event-id"]) {
     const v = req.headers.get(h)
     if (v) headers.set(h, v)
   }
-  let upstream: Response
-  try {
-    upstream = await fetch(target, {
-      method: req.method,
-      headers,
-      body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
-      redirect: "manual",
-    })
-  } catch {
-    return json({ error: { message: "Hermes is offline (can't reach HERMES_URL). Is the PC/VPS and tunnel running?" } }, 503)
+  // Buffer the (small JSON) body so it can be re-sent to the fallback.
+  const body = req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer()
+
+  let upstream: Response | null = null
+  for (const [i, base] of bases.entries()) {
+    const last = i === bases.length - 1
+    // Only a non-last address gets a short fuse, and only until response headers arrive:
+    // the streamed reply itself may run as long as it needs.
+    const ctrl = new AbortController()
+    const fuse = last ? null : setTimeout(() => ctrl.abort(), PRIMARY_TIMEOUT_MS)
+    try {
+      const res = await fetch(base + url.pathname.slice("/hermes".length) + url.search, {
+        method: req.method,
+        headers,
+        body,
+        redirect: "manual",
+        signal: ctrl.signal,
+      })
+      clearTimeout(fuse)
+      if (!last && ORIGIN_DOWN.has(res.status)) throw new Error(`origin ${res.status}`)
+      upstream = res
+      if (down[all.indexOf(base)]) ctx.waitUntil(markUp(base))
+      break
+    } catch {
+      clearTimeout(fuse)
+      ctx.waitUntil(markDown(base))
+    }
   }
-  if (upstream.status === 530 || upstream.status === 1033 || upstream.status === 502) {
-    return json({ error: { message: "Hermes is offline (tunnel not connected)." } }, 503)
+  if (!upstream || ORIGIN_DOWN.has(upstream.status)) {
+    return json({ error: { message: "Hermes is offline. Check that the VPS (or the PC tunnel) is running." } }, 503)
   }
   // Stream the body straight through (SSE chat replies).
   const out = new Headers()

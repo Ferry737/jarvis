@@ -67,7 +67,7 @@ npm run deploy      # build + deploy to Cloudflare
 
 ## Security notes
 
-- Hermes can run commands on the machine it lives on. The API key is the only thing protecting it: keep it private, and rotate it (edit `API_SERVER_KEY` in `%LOCALAPPDATA%\hermes\.env`, restart the gateway) if it leaks.
+- Hermes can run commands on the machine it lives on. The API key is the only thing protecting it: keep it private. To rotate it, change `API_SERVER_KEY` to the same new value in the VPS project `.env` and in `%LOCALAPPDATA%\hermes\.env` on the PC, restart both, then paste the new key on the phone.
 - JARVIS is **view only** for money: no code path sends, trades, swaps or signs. The wallet card only reads a public address.
 
 ## Credits

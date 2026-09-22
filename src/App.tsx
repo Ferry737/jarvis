@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { applyDocumentTheme } from "@openai/apps-sdk-ui/theme"
 import { ChevronRight, ComposeEditSquare, DotsHorizontal, Menu } from "@openai/apps-sdk-ui/components/Icon"
-import { Cards } from "./cards/Cards"
+import { HomeGlass, GlassWallpaper } from "./home/HomeGlass"
+import { HomeHud } from "./home/HomeHud"
+import { HomeTemplate } from "./home/HomeTemplate"
+import { LiveStrip } from "./home/LiveStrip"
 import { Composer } from "./chat/Composer"
 import { Thread } from "./chat/Thread"
 import { useChat } from "./chat/useChat"
@@ -9,7 +12,6 @@ import { Dock } from "./dock/Dock"
 import { SettingsSheet } from "./settings/SettingsSheet"
 import { useSettings } from "./settings/store"
 import { Drawer } from "./ui/Drawer"
-import { Letters } from "./ui/motion"
 import { Mark } from "./ui/Orb"
 import { useVoice, type SendFn } from "./voice/useVoice"
 import { VoiceFull, VoicePip } from "./voice/VoiceMode"
@@ -21,14 +23,16 @@ export function App() {
   const cfg = useMemo(() => ({ base: settings.hermesBase, key: settings.apiKey }), [settings.hermesBase, settings.apiKey])
   const chat = useChat(cfg)
   const [sheet, setSheet] = useState<"none" | "apps" | "settings" | "menu">("none")
-  const [voiceFull, setVoiceFull] = useState(settings.design !== "c")
+  const [voiceFull, setVoiceFull] = useState(false)
   const typing = useRef<AbortController | null>(null)
 
-  // Design B is the template in ChatGPT's dark mode; A and C are the light template.
+  // HUD is dark; template and glass are light. data-design switches the token set in main.css.
   useEffect(() => {
-    const theme = settings.design === "b" ? "dark" : "light"
+    const theme = settings.design === "hud" ? "dark" : "light"
     applyDocumentTheme(theme)
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#212121" : "#ffffff")
+    document.documentElement.dataset.design = settings.design
+    const bar = { template: "#ffffff", hud: "#04070d", glass: "#e6e4ff" }[settings.design]
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bar)
   }, [settings.design])
 
   const sendVoice: SendFn = useCallback((text, opts) => chat.send(text, opts), [chat.send])
@@ -48,8 +52,17 @@ export function App() {
 
   const openVoice = () => {
     if (!settings.apiKey) return setSheet("settings")
-    setVoiceFull(settings.design !== "c")
+    setVoiceFull(false)
     voice.open()
+  }
+
+  const homeProps = {
+    watchlist: settings.watchlist,
+    walletAddress: settings.walletAddress,
+    onAsk: ask,
+    onSettings: () => setSheet("settings"),
+    onApps: () => setSheet("apps"),
+    onVoice: openVoice,
   }
 
   const lastReply = [...chat.messages].reverse().find((m) => m.role === "assistant")?.text ?? ""
@@ -66,8 +79,9 @@ export function App() {
   }
 
   return (
-    <div className="flex h-full flex-col" style={{ background: "var(--j-bg)", color: "var(--j-text)" }}>
-      <header className="safe-top z-20 flex items-center justify-between px-2 pb-1" style={{ background: "var(--j-bg)" }}>
+    <div className="relative flex h-full flex-col" style={{ color: "var(--j-text)" }}>
+      {settings.design === "glass" && <GlassWallpaper />}
+      <header className="safe-top relative z-20 flex items-center justify-between px-2 pb-1">
         <HeaderButton label="Menu" onClick={() => setSheet("menu")}>
           <Menu className="size-6" />
         </HeaderButton>
@@ -84,33 +98,30 @@ export function App() {
         </HeaderButton>
       </header>
 
-      <main className="no-scrollbar relative flex-1 overflow-y-auto">
+      <main className="no-scrollbar relative z-10 flex-1 overflow-y-auto">
         {voiceOn && !voiceFull && <VoicePip {...voiceProps} onExpand={() => setVoiceFull(true)} />}
         <Thread
           messages={chat.messages}
           header={
-            <div className={empty ? "flex flex-col gap-5 pt-[6vh]" : "flex flex-col gap-4 pt-2"}>
-              {empty && (
-                <h1 className="px-1 text-[28px] font-semibold leading-tight tracking-tight">
-                  <Letters text={greeting()} />
-                  <br />
-                  <span style={{ color: "var(--j-text-3)" }}>
-                    <Letters text="How can I help?" delay={420} />
-                  </span>
-                </h1>
-              )}
+            <div className="flex flex-col gap-4 pt-1">
               {!settings.apiKey && <ConnectCard onConnect={() => setSheet("settings")} />}
-              <div className="anim-rise flex items-center gap-2 text-[15px]" style={{ color: "var(--j-text-2)", animationDelay: "80ms" }}>
-                <Mark size={18} />
-                <span>JARVIS</span>
-              </div>
-              <Cards watchlist={settings.watchlist} walletAddress={settings.walletAddress} onAsk={ask} onSettings={() => setSheet("settings")} />
+              {empty ? (
+                settings.design === "hud" ? (
+                  <HomeHud {...homeProps} />
+                ) : settings.design === "glass" ? (
+                  <HomeGlass {...homeProps} />
+                ) : (
+                  <HomeTemplate {...homeProps} />
+                )
+              ) : (
+                <LiveStrip {...homeProps} />
+              )}
             </div>
           }
         />
       </main>
 
-      {empty && !voiceOn && (
+      {empty && !voiceOn && settings.design === "template" && (
         <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 pb-1 pt-2">
           {SUGGESTIONS.map((s, i) => (
             <button
@@ -146,7 +157,7 @@ export function App() {
       )}
       {sheet === "apps" && <Dock onClose={() => setSheet("none")} />}
       {sheet === "settings" && <SettingsSheet settings={settings} update={update} onClose={() => setSheet("none")} />}
-      {voiceOn && voiceFull && <VoiceFull {...voiceProps} onCollapse={settings.design === "c" ? () => setVoiceFull(false) : undefined} />}
+      {voiceOn && voiceFull && <VoiceFull {...voiceProps} onCollapse={() => setVoiceFull(false)} />}
     </div>
   )
 }
@@ -177,7 +188,3 @@ function ConnectCard({ onConnect }: { onConnect: () => void }) {
   )
 }
 
-function greeting() {
-  const h = new Date().getHours()
-  return h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"
-}

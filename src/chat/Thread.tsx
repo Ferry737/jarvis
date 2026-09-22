@@ -13,7 +13,8 @@ export function Thread({ messages, header }: { messages: Message[]; header?: Rea
   const end = useRef<HTMLDivElement>(null)
   const last = messages[messages.length - 1]
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "end", behavior: "smooth" })
+    // Only follow the conversation; an empty chat (the home screen) stays at the top.
+    if (messages.length) end.current?.scrollIntoView({ block: "end", behavior: "smooth" })
   }, [messages.length, last?.text.length])
 
   return (
@@ -40,7 +41,7 @@ export function Thread({ messages, header }: { messages: Message[]; header?: Rea
               )}
             </div>
             {m.text && (
-              <div className={`jarvis-md text-[16px] leading-[1.55] ${m.pending ? "caret" : ""}`}>
+              <div className={`jarvis-md jarvis-answer text-[16px] leading-[1.55] ${m.pending ? "caret" : ""}`}>
                 <Markdown>{m.text}</Markdown>
               </div>
             )}

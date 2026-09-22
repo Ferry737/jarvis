@@ -86,8 +86,8 @@ export function SettingsSheet(props: { settings: Settings; update: (p: Partial<S
                 borderColor: settings.design === d ? "var(--j-text)" : "var(--j-border)",
               }}
             >
-              <span className="text-[15px] font-semibold">{d.toUpperCase()}</span>
-              <span style={{ color: "var(--j-text-2)" }}>{DESIGNS[d]}</span>
+              <span className="text-[15px] font-semibold">{DESIGNS[d].label}</span>
+              <span style={{ color: "var(--j-text-2)" }}>{DESIGNS[d].hint}</span>
             </button>
           ))}
         </div>,

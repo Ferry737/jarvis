@@ -29,7 +29,7 @@ export function Drawer(props: {
       <nav
         onClick={(e) => e.stopPropagation()}
         className="anim-drawer safe-top safe-bottom flex h-full w-[78%] max-w-[320px] flex-col px-3"
-        style={{ background: "var(--j-bg)", boxShadow: "var(--j-shadow)" }}
+        style={{ background: "var(--j-sheet, var(--j-bg))", boxShadow: "var(--j-shadow)", WebkitBackdropFilter: "blur(30px) saturate(1.6)", backdropFilter: "blur(30px) saturate(1.6)" }}
         aria-label="Menu"
       >
         <div className="flex items-center gap-2.5 px-3 py-4">

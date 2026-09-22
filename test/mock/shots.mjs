@@ -39,7 +39,8 @@ const fakeSpeech = () => {
 }
 
 const browser = await chromium.launch()
-for (const v of ["a", "b", "c"]) {
+const VARIANTS = { A: "template", B: "hud", C: "glass" }
+for (const [letter, v] of Object.entries(VARIANTS)) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
   const page = await ctx.newPage()
   await page.addInitScript(fakeSpeech)
@@ -51,17 +52,23 @@ for (const v of ["a", "b", "c"]) {
   }, { v })
   await page.goto(`${base}/?v=${v}`)
   await page.waitForTimeout(2200)
-  await page.screenshot({ path: `${out}/variant-${v.toUpperCase()}-1-home.png` })
+  await page.screenshot({ path: `${out}/variant-${letter}-1-home.png` })
 
-  await page.getByRole("button", { name: "Market update" }).click()
+  await page.getByRole("button", { name: "Apps" }).first().click()
+  await page.waitForTimeout(1100)
+  await page.screenshot({ path: `${out}/variant-${letter}-4-dock.png` })
+  await page.keyboard.press("Escape")
+  await page.waitForTimeout(300)
+  await page.getByRole("textbox", { name: "Message JARVIS" }).fill("Give me a quick market update")
+  await page.keyboard.press("Enter")
   await page.waitForTimeout(900)
-  await page.screenshot({ path: `${out}/variant-${v.toUpperCase()}-2-chat.png` })
+  await page.screenshot({ path: `${out}/variant-${letter}-2-chat.png` })
   await page.waitForTimeout(1500)
 
   await page.getByRole("button", { name: "Voice mode" }).click()
   await page.waitForTimeout(2600) // hears question → Hermes streams → starts speaking
-  await page.screenshot({ path: `${out}/variant-${v.toUpperCase()}-3-voice.png` })
-  const phase = await page.locator(".orb[data-phase]").first().getAttribute("data-phase")
+  await page.screenshot({ path: `${out}/variant-${letter}-3-voice.png` })
+  const phase = await page.locator("[aria-label=\"Voice mode\"] .orb").first().getAttribute("data-phase")
   console.log(`variant ${v}: voice phase during shot = ${phase}`)
   await ctx.close()
 }

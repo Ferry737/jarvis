@@ -57,7 +57,7 @@ export function VoiceFull(props: Props & { onCollapse?: () => void }) {
   const s = status(props)
   const caption = captionOf(state, props.lastReply)
   return (
-    <div className="anim-fade safe-top safe-bottom fixed inset-0 z-50 flex flex-col" style={{ background: "var(--j-bg)" }} role="dialog" aria-label="Voice mode">
+    <div className="anim-fade safe-top safe-bottom fixed inset-0 z-50 flex flex-col" style={{ background: "var(--j-sheet, var(--j-bg))", WebkitBackdropFilter: "blur(40px) saturate(1.6)", backdropFilter: "blur(40px) saturate(1.6)" }} role="dialog" aria-label="Voice mode" data-surface="voice">
       <div className="flex items-center justify-between px-4 pt-2">
         {props.onCollapse ? (
           <button type="button" aria-label="Minimize" onClick={props.onCollapse} className="tap grid size-10 place-items-center rounded-full" style={{ background: "var(--j-pill)" }}>

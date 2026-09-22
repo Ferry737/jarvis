@@ -10,16 +10,19 @@ export type Settings = {
   watchlist: string[]
   /** Public wallet address for the read-only Wallet card. Never a private key. */
   walletAddress: string
-  /** Design direction: a = template light, b = template dark, c = light + pinned live voice bar. */
+  /** Visual direction (all use the pinned live voice bar, expandable to full screen). */
   design: Design
 }
 
-export type Design = "a" | "b" | "c"
-export const DESIGNS: Record<Design, string> = {
-  a: "Template · light",
-  b: "Template · dark",
-  c: "Template · live voice bar",
+export type Design = "template" | "hud" | "glass"
+export const DESIGNS: Record<Design, { label: string; hint: string }> = {
+  template: { label: "Template", hint: "ChatGPT look, refined" },
+  hud: { label: "Stark HUD", hint: "Iron Man, dark + cyan" },
+  glass: { label: "Glass", hint: "iPhone-style widgets" },
 }
+const isDesign = (v: unknown): v is Design => v === "template" || v === "hud" || v === "glass"
+/** Older saves used a/b/c (all variants of the template). */
+const migrateDesign = (v: unknown): Design => (isDesign(v) ? v : "template")
 
 export const DEFAULT_SETTINGS: Settings = {
   apiKey: "",
@@ -28,7 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lang: "en-US",
   watchlist: ["BTC-USD", "ETH-USD", "EURUSD=X", "SPY"],
   walletAddress: "",
-  design: "c",
+  design: "template",
 }
 
 const KEY = "jarvis.settings.v1"
@@ -53,16 +56,17 @@ export function saveJSON(key: string, value: unknown) {
 export function useSettings() {
   const [settings, setState] = useState<Settings>(() => {
     const s = loadJSON(KEY, DEFAULT_SETTINGS)
-    // ?v=a|b|c previews a design direction without changing the saved choice.
+    const saved = { ...s, design: migrateDesign(s.design) }
+    // ?v=template|hud|glass previews a design without changing the saved choice.
     const v = new URLSearchParams(location.search).get("v")
-    return v === "a" || v === "b" || v === "c" ? { ...s, design: v } : s
+    return isDesign(v) ? { ...saved, design: v } : saved
   })
   const update = useCallback((patch: Partial<Settings>) => {
     setState((prev) => {
       const next = { ...prev, ...patch }
       // A ?v= preview must not overwrite the saved design unless the user picks one.
       const saved = loadJSON(KEY, DEFAULT_SETTINGS)
-      saveJSON(KEY, "design" in patch ? next : { ...next, design: saved.design })
+      saveJSON(KEY, "design" in patch ? next : { ...next, design: migrateDesign(saved.design) })
       return next
     })
   }, [])

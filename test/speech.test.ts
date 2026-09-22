@@ -61,3 +61,9 @@ describe("SentenceChunker", () => {
     expect(c.flush()).toEqual(["I've put the code on screen."])
   })
 })
+
+describe("half-streamed markdown", () => {
+  it("drops an unclosed bold marker instead of reading an asterisk", () => {
+    expect(toSpeakable("Good evening. **Bitcoin is at")).toBe("Good evening. Bitcoin is at")
+  })
+})

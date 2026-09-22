@@ -24,6 +24,7 @@ export function toSpeakable(md: string): string {
   ) // each table row becomes one spoken sentence
   s = s.replace(/\s*\|\s*/g, ", ")
   s = s.replace(/(\*\*|__|\*|_|~~)(\S(?:[\s\S]*?\S)?)\1/g, "$2")
+  s = s.replace(/\*+/g, "") // unmatched emphasis from a half-streamed reply
   s = s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "")
   s = s.replace(/^[,\s]+|[,\s]+$/g, "")
   s = s.replace(/\s+/g, " ")

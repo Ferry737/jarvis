@@ -62,7 +62,7 @@ export function Composer(props: {
   const mode: "stop" | "send" | "voice" = props.busy ? "stop" : text.trim() ? "send" : "voice"
 
   return (
-    <div className="safe-bottom px-3 pt-2" style={{ background: "linear-gradient(to top, var(--j-bg) 70%, transparent)" }}>
+    <div className="safe-bottom px-3 pt-2" style={{ background: "linear-gradient(to top, var(--j-sheet, var(--j-bg)) 55%, transparent)" }}>
       <div className="flex items-end gap-2">
         <button
           type="button"

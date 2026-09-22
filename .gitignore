@@ -7,3 +7,4 @@ dist
 .hermes-vps-key
 vps/env-additions.txt
 .gh-login.log
+.gstack/

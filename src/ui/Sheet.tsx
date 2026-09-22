@@ -16,7 +16,7 @@ export function Sheet(props: { title: string; onClose: () => void; children: Rea
         aria-label={props.title}
         onClick={(e) => e.stopPropagation()}
         className={`anim-sheet safe-bottom flex flex-col rounded-t-[28px] ${props.tall ? "h-[92%]" : "max-h-[88%]"}`}
-        style={{ background: "var(--j-bg)", boxShadow: "var(--j-shadow)" }}
+        style={{ background: "var(--j-sheet, var(--j-bg))", boxShadow: "var(--j-shadow)", WebkitBackdropFilter: "blur(30px) saturate(1.6)", backdropFilter: "blur(30px) saturate(1.6)" }}
       >
         <div className="mx-auto mt-2 h-1.5 w-10 rounded-full" style={{ background: "var(--j-border)" }} />
         <div className="flex items-center justify-between px-5 pb-2 pt-2">

@@ -35,6 +35,10 @@ if (vv) {
   fit()
 }
 
+// Ask the browser to keep JARVIS's storage (the saved key and settings) instead of clearing it
+// under storage pressure. Home Screen apps get this; a plain Safari tab may say no.
+navigator.storage?.persist?.().catch(() => {})
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { health } from "../api/hermes"
 import { Sheet } from "../ui/Sheet"
 import { listVoices } from "../voice/engine"
-import { DESIGNS, isWalletAddress, type Design, type Settings } from "./store"
+import { cleanKey, DESIGNS, isWalletAddress, type Design, type Settings } from "./store"
 
 export function SettingsSheet(props: { settings: Settings; update: (p: Partial<Settings>) => void; onClose: () => void }) {
   const { settings, update } = props
@@ -53,7 +53,7 @@ export function SettingsSheet(props: { settings: Settings; update: (p: Partial<S
         <>
           <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
             API key · stored only on this phone
-            <input className={field} style={fieldStyle} type="password" autoComplete="off" value={settings.apiKey} onChange={(e) => update({ apiKey: e.target.value.trim() })} placeholder="Paste your key" />
+            <input className={field} style={fieldStyle} type="password" autoComplete="off" value={settings.apiKey} onChange={(e) => update({ apiKey: cleanKey(e.target.value) })} placeholder="Paste your key" />
           </label>
           <label className={labelCls} style={{ color: "var(--j-text-2)" }}>
             Hermes address

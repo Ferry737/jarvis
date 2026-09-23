@@ -74,3 +74,6 @@ export function useSettings() {
 }
 
 export const isWalletAddress = (s: string) => /^0x[0-9a-fA-F]{40}$/.test(s)
+
+/** Keys copied from dashboards often carry "Bearer ", quotes, spaces or line breaks. */
+export const cleanKey = (s: string) => s.replace(/^\s*(?:authorization:\s*)?bearer\s+/i, "").replace(/["'\s]/g, "")

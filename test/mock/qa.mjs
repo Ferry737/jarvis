@@ -87,7 +87,7 @@ const overflowX = (page) => page.evaluate(() => document.documentElement.scrollW
 
 // ── 2. Chat against mock Hermes ──
 {
-  const { ctx, page, errors } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:8643", design: "c" })
+  const { ctx, page, errors } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:8643", design: "template" })
   await page.goto(base)
   await page.waitForTimeout(1200)
   check("with key: Connect card hidden", !(await page.getByText("Connect to Hermes").isVisible()))
@@ -124,12 +124,12 @@ const overflowX = (page) => page.evaluate(() => document.documentElement.scrollW
 
 // ── 3. Voice mode (design C: pinned bar) ──
 {
-  const { ctx, page, errors } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:8643", design: "c" })
+  const { ctx, page, errors } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:8643", design: "template" })
   await page.goto(base)
   await page.waitForTimeout(1000)
   await page.getByRole("button", { name: "Voice mode" }).click()
   await page.waitForTimeout(200)
-  check("C: voice opens as pinned bar", await page.getByRole("region", { name: "Voice mode" }).isVisible())
+  check("voice opens as pinned bar", await page.getByRole("region", { name: "Voice mode" }).isVisible())
   await page.waitForTimeout(2500)
   const spoken = await page.evaluate(() => window.__spoken.join(" "))
   check("voice: heard → Hermes → spoke reply", /Bitcoin/.test(spoken), spoken.slice(0, 80))
@@ -150,21 +150,21 @@ const overflowX = (page) => page.evaluate(() => document.documentElement.scrollW
 
 // ── 4. Design switching + URL preview must not overwrite the saved choice ──
 {
-  const { ctx, page } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:8643", design: "c" })
-  await page.goto(`${base}/?v=b`)
+  const { ctx, page } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:8643", design: "template" })
+  await page.goto(`${base}/?v=hud`)
   await page.waitForTimeout(800)
-  check("?v=b previews dark theme", (await page.evaluate(() => document.documentElement.dataset.theme)) === "dark")
+  check("?v=hud previews dark HUD", (await page.evaluate(() => document.documentElement.dataset.theme)) === "dark")
   await page.getByRole("button", { name: "Menu" }).click()
   await page.getByRole("button", { name: "Settings" }).click()
   await page.getByLabel("I speak").selectOption("en-GB")
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("jarvis.settings.v1")).design)
-  check("URL preview does not overwrite saved design", saved === "c", `saved=${saved}`)
+  check("URL preview does not overwrite saved design", saved === "template", `saved=${saved}`)
   await ctx.close()
 }
 
 // ── 5. Hermes offline / wrong key ──
 {
-  const { ctx, page } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:9", design: "a" })
+  const { ctx, page } = await newPage({ apiKey: "demo", hermesBase: "http://127.0.0.1:9", design: "template" })
   await page.goto(base)
   await page.waitForTimeout(800)
   await page.getByRole("textbox", { name: "Message JARVIS" }).fill("anyone there?")

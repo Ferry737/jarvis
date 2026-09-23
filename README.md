@@ -1,6 +1,6 @@
 # JARVIS
 
-A voice-first iPhone assistant for my Hermes Agent: a ChatGPT-style chat, a hands-free voice mode with a mute button, live cards (markets, wallet) and one-tap launchers for my apps. It runs in Safari and installs to the home screen. Hosted on Cloudflare (free).
+A voice-first iPhone assistant for my Hermes Agent: a ChatGPT-style chat, a hands-free voice mode with a mute button, live widgets (markets, wallet), quick actions and one-tap launchers with real app icons. Three looks in Settings › Design: Template (default), Stark HUD, Glass. It runs in Safari and installs to the home screen. Hosted on Cloudflare (free).
 
 ```
 iPhone Safari ──HTTPS──▶ Cloudflare Worker (jarvis.<you>.workers.dev)

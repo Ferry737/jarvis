@@ -1,4 +1,17 @@
+<div align="center">
+
 # JARVIS
+
+**Voice-first iPhone assistant for Hermes Agent: ChatGPT-style chat, hands-free voice, widgets, a PWA on the home screen.**
+
+![PWA](https://img.shields.io/badge/PWA-iPhone%20home%20screen-00d4aa?style=for-the-badge)
+![Cloudflare](https://img.shields.io/badge/Hosted%20on-Cloudflare-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
+![Voice](https://img.shields.io/badge/Voice-Web%20Speech%20API-4285F4?style=for-the-badge)
+![Hermes](https://img.shields.io/badge/Powered%20by-Hermes%20Agent-000000?style=for-the-badge)
+
+</div>
+
+---
 
 A voice-first iPhone assistant for my Hermes Agent: a ChatGPT-style chat, a hands-free voice mode with a mute button, live widgets (markets, wallet), quick actions and one-tap launchers with real app icons. Three looks in Settings › Design: Template (default), Stark HUD, Glass. It runs in Safari and installs to the home screen. Hosted on Cloudflare (free).
 
